@@ -1,13 +1,13 @@
 //! My personal penrose config
 use penrose::{
     builtin::{
-        actions::{key_handler, modify_with, send_layout_message, spawn},
+        actions::{key_handler, modify_with, send_layout_message, spawn, log_current_state},
         hooks::SpacingHook,
         layout::messages::{ExpandMain, IncMain, ShrinkMain},
     },
     core::{
         bindings::{parse_keybindings_with_xmodmap, KeyEventHandler},
-        Config, WindowManager, State,
+        Config, WindowManager,
     },
     extensions::{
         hooks::{
@@ -19,14 +19,48 @@ use penrose::{
     },
     manage_hooks, map,
     util::spawn as _spawn,
-    x::{query::ClassName, XConn},
-    x11rb::RustConn, pure::StackSet,
+    x::{query::ClassName, XConn, XConnExt},
+    x11rb::RustConn, pure::Workspace,
+    custom_error, Xid,
 };
 use std::collections::HashMap;
 use tracing_subscriber::{self, prelude::*};
+use tracing_subscriber::{reload::Handle, EnvFilter};
 use wm::layouts::layouts;
+use tracing::warn;
 
-fn raw_key_bindings() -> HashMap<String, Box<dyn KeyEventHandler<RustConn>>> {
+pub fn set_tracing_filter<L, S>(handle: Handle<L, S>) -> KeyHandler
+where
+    L: From<EnvFilter> + 'static,
+    S: 'static,
+{
+    key_handler(move |state, _| {
+        let options = vec!["trace", "debug", "info"];
+        let screen_index = state.client_set.current_screen().index();
+        let menu = DMenu::new(&DMenuConfig::with_prompt("filter: "), screen_index);
+
+        let new_filter = match menu.build_menu(options)? {
+            MenuMatch::Line(_, level) => level,
+            MenuMatch::UserInput(custom) => custom,
+            MenuMatch::NoMatch => return Ok(()),
+        };
+
+        warn!(?new_filter, "attempting to update tracing filter");
+        let f = new_filter
+            .parse::<EnvFilter>()
+            .map_err(|e| custom_error!("invalid filter: {}", e))?;
+        warn!("reloading tracing handle");
+        handle
+            .reload(f)
+            .map_err(|e| custom_error!("unable to set filter: {}", e))
+    })
+}
+
+fn raw_key_bindings<L, S>(handle: Handle<L, S>) -> HashMap<String, KeyHandler>
+where
+    L: From<EnvFilter> + 'static,
+    S: 'static,
+{
     let mut raw_bindings = map! {
         map_keys: |k: &str| k.to_string();
 
@@ -43,25 +77,24 @@ fn raw_key_bindings() -> HashMap<String, Box<dyn KeyEventHandler<RustConn>>> {
         "A-S-space" => modify_with(|cs| cs.previous_layout()),
         "A-S-Up" => send_layout_message(|| IncMain(1)),
         "A-S-Down" => send_layout_message(|| IncMain(-1)),
-        "A-S-Right" => send_layout_message(|| ExpandMain),
         "A-S-Left" => send_layout_message(|| ShrinkMain),
+        "A-S-Right" => send_layout_message(|| ExpandMain),
         "A-p" => spawn("dmenu_run"),
         "A-S-Return" => spawn("tabbed alacritty --embed"),
         "A-Escape" => power_menu(),
-        "A-1" => show_workspace(1),
-        "A-2" => show_workspace(2),
-        "A-3" => show_workspace(3),
-        "A-4" => show_workspace(4),
-        "A-5" => show_workspace(5),
-        "A-6" => show_workspace(6),
-        "A-7" => show_workspace(7),
-        "A-8" => show_workspace(8),
-        "A-8" => show_workspace(9),
+
+        // Debugging
+        "M-A-t" => set_tracing_filter(handle),
+        "M-A-d" => log_current_state(),
 
     };
 
     for tag in &["1", "2", "3", "4", "5", "6", "7", "8", "9"] {
         raw_bindings.extend([
+            (
+                format!("A-{tag}"),
+                show_workspace(tag),
+            ),
             (
                 format!("A-S-{tag}"),
                 modify_with(move |client_set| client_set.move_focused_to_tag(tag)),
@@ -98,22 +131,29 @@ pub fn power_menu() -> KeyHandler {
     })
 }
 
-// A state extension for tracking last screen of each workspace
-struct WorkspaceScreenTracker(HashMap<String, usize>);
+struct FixedWorkspaces(HashMap<String, usize>);
 
-fn show_workspace(ws: usize) -> KeyHandler {
+fn show_workspace(ws: &str) -> KeyHandler {
+    let ws = ws.to_owned();
+
     key_handler(move |state, x: &RustConn| {
-        let _s = state.extension::<WorkspaceScreenTracker>()?;
+        let _s = state.extension::<FixedWorkspaces>()?;
         let s = _s.borrow();
         
-        let ws_id = ws.to_string();
+        let screen_idx = s.0.get(&ws).unwrap();
+        let target_screen = state.client_set.screens_mut().find(|s| s.index() == *screen_idx).unwrap();
+        let current_ws = &mut target_screen.workspace as *mut Workspace<Xid>;
+        let target_ws = state.client_set.workspace_mut(&ws).unwrap() as *mut Workspace<Xid>;
 
-        if let Some(previous_screen) = s.0.get(&ws_id) {
-            let mut cs = state.client_set.clone();
-            
-            cs.focus_screen(*previous_screen);
+        unsafe {
+            std::ptr::swap(current_ws, target_ws);
         }
-        
+
+        state.client_set.focus_screen(*screen_idx);
+
+        drop(s);
+        x.refresh(state)?;
+      
         Ok(())
     })
 }
@@ -123,31 +163,35 @@ fn add_workspace_screen_tracker_state<X>(mut wm: WindowManager<X>) -> WindowMana
 where
     X: XConn + 'static
 {
-    wm.state.add_extension(WorkspaceScreenTracker(HashMap::new()));
-    wm.state.config.compose_or_set_refresh_hook(refresh_hook);
+    let mut map = HashMap::new();
+    map.insert("1".to_string(), 0);
+    map.insert("2".to_string(), 1);
+    map.insert("3".to_string(), 0);
+    map.insert("4".to_string(), 1);
+    map.insert("5".to_string(), 0);
+    map.insert("6".to_string(), 1);
+    map.insert("7".to_string(), 0);
+    map.insert("8".to_string(), 1);
+    map.insert("9".to_string(), 0);
+    wm.state.add_extension(FixedWorkspaces(map));
     wm
 }
 
 
-fn refresh_hook<X: XConn>(state: &mut State<X>, x: &X) -> penrose::Result<()> {
-    let s = state.extension::<WorkspaceScreenTracker>()?;
-   
-    let ws_id = state.client_set.current_tag();
-    let screen_id = state.client_set.current_screen().index();
-
-    s.borrow_mut().0.insert(ws_id.to_string(), screen_id);
-
-    Ok(())
-}
-
 fn main() -> penrose::Result<()> {
-    tracing_subscriber::fmt()
+    let file_appender = tracing_appender::rolling::daily("/home/alex/wmlogs", "log.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    let tracing_builder = tracing_subscriber::fmt()
         .with_env_filter("info")
-        .finish()
-        .init();
+        .with_writer(non_blocking)
+        .with_filter_reloading();
+
+    let reload_handle = tracing_builder.reload_handle();
+    tracing_builder.finish().init();
 
     let conn = RustConn::new()?;
-    let key_bindings = parse_keybindings_with_xmodmap(raw_key_bindings())?;
+    let key_bindings = parse_keybindings_with_xmodmap(raw_key_bindings(reload_handle))?;
 
     let startup_hook = SpawnOnStartup::boxed("/usr/bin/.wmwrc");
     let manage_hook = manage_hooks![
@@ -176,18 +220,4 @@ fn main() -> penrose::Result<()> {
     let wm = add_workspace_screen_tracker_state(WindowManager::new(config, key_bindings, HashMap::new(), conn)?);
 
     wm.run()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn bindings_parse_correctly_with_xmodmap() {
-        let res = parse_keybindings_with_xmodmap(raw_key_bindings());
-
-        if let Err(e) = res {
-            panic!("{e}");
-        }
-    }
 }

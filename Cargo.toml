@@ -8,4 +8,6 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.75"
 penrose = { git = "https://github.com/sminez/penrose", branch = "develop" }
+tracing = "0.1.40"
+tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
