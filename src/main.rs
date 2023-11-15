@@ -7,7 +7,7 @@ use penrose::{
     },
     core::{
         bindings::{parse_keybindings_with_xmodmap, KeyEventHandler},
-        Config, WindowManager,
+        Config, WindowManager, State,
     },
     extensions::{
         hooks::{
@@ -19,8 +19,8 @@ use penrose::{
     },
     manage_hooks, map,
     util::spawn as _spawn,
-    x::query::ClassName,
-    x11rb::RustConn,
+    x::{query::ClassName, XConn},
+    x11rb::RustConn, pure::StackSet,
 };
 use std::collections::HashMap;
 use tracing_subscriber::{self, prelude::*};
@@ -48,14 +48,20 @@ fn raw_key_bindings() -> HashMap<String, Box<dyn KeyEventHandler<RustConn>>> {
         "A-p" => spawn("dmenu_run"),
         "A-S-Return" => spawn("tabbed alacritty --embed"),
         "A-Escape" => power_menu(),
+        "A-1" => show_workspace(1),
+        "A-2" => show_workspace(2),
+        "A-3" => show_workspace(3),
+        "A-4" => show_workspace(4),
+        "A-5" => show_workspace(5),
+        "A-6" => show_workspace(6),
+        "A-7" => show_workspace(7),
+        "A-8" => show_workspace(8),
+        "A-8" => show_workspace(9),
+
     };
 
     for tag in &["1", "2", "3", "4", "5", "6", "7", "8", "9"] {
         raw_bindings.extend([
-            (
-                format!("A-{tag}"),
-                modify_with(move |client_set| client_set.focus_tag(tag)),
-            ),
             (
                 format!("A-S-{tag}"),
                 modify_with(move |client_set| client_set.move_focused_to_tag(tag)),
@@ -92,6 +98,48 @@ pub fn power_menu() -> KeyHandler {
     })
 }
 
+// A state extension for tracking last screen of each workspace
+struct WorkspaceScreenTracker(HashMap<String, usize>);
+
+fn show_workspace(ws: usize) -> KeyHandler {
+    key_handler(move |state, x: &RustConn| {
+        let _s = state.extension::<WorkspaceScreenTracker>()?;
+        let s = _s.borrow();
+        
+        let ws_id = ws.to_string();
+
+        if let Some(previous_screen) = s.0.get(&ws_id) {
+            let mut cs = state.client_set.clone();
+            
+            cs.focus_screen(*previous_screen);
+        }
+        
+        Ok(())
+    })
+}
+
+
+fn add_workspace_screen_tracker_state<X>(mut wm: WindowManager<X>) -> WindowManager<X>
+where
+    X: XConn + 'static
+{
+    wm.state.add_extension(WorkspaceScreenTracker(HashMap::new()));
+    wm.state.config.compose_or_set_refresh_hook(refresh_hook);
+    wm
+}
+
+
+fn refresh_hook<X: XConn>(state: &mut State<X>, x: &X) -> penrose::Result<()> {
+    let s = state.extension::<WorkspaceScreenTracker>()?;
+   
+    let ws_id = state.client_set.current_tag();
+    let screen_id = state.client_set.current_screen().index();
+
+    s.borrow_mut().0.insert(ws_id.to_string(), screen_id);
+
+    Ok(())
+}
+
 fn main() -> penrose::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter("info")
@@ -125,7 +173,7 @@ fn main() -> penrose::Result<()> {
     _spawn("polybar left")?;
     _spawn("polybar right")?;
 
-    let wm = WindowManager::new(config, key_bindings, HashMap::new(), conn)?;
+    let wm = add_workspace_screen_tracker_state(WindowManager::new(config, key_bindings, HashMap::new(), conn)?);
 
     wm.run()
 }
