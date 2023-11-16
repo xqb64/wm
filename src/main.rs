@@ -166,7 +166,7 @@ fn show_workspace(ws: &str) -> KeyHandler {
 }
 
 
-fn add_workspace_screen_tracker_state<X>(mut wm: WindowManager<X>) -> WindowManager<X>
+fn add_fixed_workspaces_state<X>(mut wm: WindowManager<X>) -> WindowManager<X>
 where
     X: XConn + 'static
 {
@@ -224,7 +224,7 @@ fn main() -> penrose::Result<()> {
     _spawn("polybar left")?;
     _spawn("polybar right")?;
 
-    let wm = add_workspace_screen_tracker_state(WindowManager::new(config, key_bindings, HashMap::new(), conn)?);
+    let wm = add_fixed_workspaces_state(WindowManager::new(config, key_bindings, HashMap::new(), conn)?);
 
     wm.run()
 }
