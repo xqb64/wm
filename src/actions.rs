@@ -1,20 +1,21 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write, process::ChildStdin};
 
 use crate::KeyHandler;
 use penrose::{
     builtin::actions::key_handler,
-    core::WindowManager,
+    core::{State, WindowManager},
     custom_error,
     extensions::util::dmenu::{DMenu, DMenuConfig, MenuMatch},
     pure::Workspace,
     x::{XConn, XConnExt},
     x11rb::RustConn,
-    Xid,
+    Result, Xid,
 };
 use tracing::warn;
 use tracing_subscriber::{reload::Handle, EnvFilter};
 
 struct FixedWorkspaces(HashMap<String, usize>);
+struct XmobarHandle(ChildStdin);
 
 pub fn add_fixed_workspaces_state<X>(mut wm: WindowManager<X>) -> WindowManager<X>
 where
@@ -25,6 +26,15 @@ where
         map.insert(k.to_string(), v);
     }
     wm.state.add_extension(FixedWorkspaces(map));
+    wm
+}
+
+pub fn add_xmobar_handle<X>(mut wm: WindowManager<X>, handle: ChildStdin) -> WindowManager<X>
+where
+    X: XConn + 'static,
+{
+    wm.state.add_extension(XmobarHandle(handle));
+    wm.state.config.compose_or_set_refresh_hook(refresh_hook);
     wm
 }
 
@@ -110,4 +120,36 @@ pub fn power_menu() -> KeyHandler {
             Ok(())
         }
     })
+}
+
+fn refresh_hook<X: XConn>(state: &mut State<X>, x: &X) -> Result<()> {
+    let _s = state.extension::<XmobarHandle>()?;
+    _s.borrow_mut()
+        .0
+        .write_all(display_workspaces(state).as_bytes())?;
+
+    x.refresh(state)?;
+
+    Ok(())
+}
+
+fn display_workspaces<X: XConn>(state: &mut State<X>) -> String {
+    let workspaces = state
+        .client_set
+        .ordered_workspaces()
+        .map(|w| w.tag())
+        .collect::<Vec<_>>();
+
+    let active_ws = state.client_set.current_workspace().tag();
+
+    let mut s = workspaces.join(" ");
+
+    s = s.replace(
+        active_ws,
+        &format!("<fc=#42cbf5>[</fc>{active_ws}<fc=#42cbf5>]</fc>"),
+    );
+
+    s.push('\n');
+
+    s
 }

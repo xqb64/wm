@@ -8,14 +8,13 @@ use penrose::{
         SpawnOnStartup,
     },
     manage_hooks,
-    util::spawn as _spawn,
     x::query::ClassName,
     x11rb::RustConn,
     Result,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, process::Stdio};
 use tracing_subscriber::{self, prelude::*};
-use wm::actions::add_fixed_workspaces_state;
+use wm::actions::{add_fixed_workspaces_state, add_xmobar_handle};
 use wm::bindings::raw_key_bindings;
 use wm::layouts::layouts;
 
@@ -50,6 +49,19 @@ fn main() -> Result<()> {
         bottom_px: 0,
     };
 
+    use std::process::Command;
+
+    Command::new("xmobar")
+        .args(["/home/alex/.config/xmobar/xmobarrc_0", "-x", "0"])
+        .spawn()?;
+
+    let mut xmobar_right = Command::new("xmobar")
+        .args(["/home/alex/.config/xmobar/xmobarrc_1", "-x", "1"])
+        .stdin(Stdio::piped())
+        .spawn()?;
+
+    let xmobar_handle = xmobar_right.stdin.take().unwrap();
+
     let config = add_ewmh_hooks(Config {
         default_layouts: layouts(),
         floating_classes: vec!["mpv-float".to_owned()],
@@ -59,15 +71,15 @@ fn main() -> Result<()> {
         ..Config::default()
     });
 
-    _spawn("polybar left")?;
-    _spawn("polybar right")?;
-
-    let wm = add_fixed_workspaces_state(WindowManager::new(
-        config,
-        key_bindings,
-        HashMap::new(),
-        conn,
-    )?);
+    let wm = add_xmobar_handle(
+        add_fixed_workspaces_state(WindowManager::new(
+            config,
+            key_bindings,
+            HashMap::new(),
+            conn,
+        )?),
+        xmobar_handle,
+    );
 
     wm.run()
 }
