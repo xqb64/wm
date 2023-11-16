@@ -171,15 +171,9 @@ where
     X: XConn + 'static
 {
     let mut map = HashMap::new();
-    map.insert("1".to_string(), 0);
-    map.insert("2".to_string(), 1);
-    map.insert("3".to_string(), 0);
-    map.insert("4".to_string(), 1);
-    map.insert("5".to_string(), 0);
-    map.insert("6".to_string(), 1);
-    map.insert("7".to_string(), 0);
-    map.insert("8".to_string(), 1);
-    map.insert("9".to_string(), 0);
+    for (k, v) in (1..=9).zip((0..=1).cycle()) {
+        map.insert(k.to_string(), v);
+    }
     wm.state.add_extension(FixedWorkspaces(map));
     wm
 }
