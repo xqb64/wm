@@ -79,7 +79,7 @@ where
         "A-S-Down" => send_layout_message(|| IncMain(-1)),
         "A-S-Left" => send_layout_message(|| ShrinkMain),
         "A-S-Right" => send_layout_message(|| ExpandMain),
-        "A-p" => spawn("dmenu_run"),
+        "A-p" => spawn_dmenu(),
         "A-S-Return" => spawn("tabbed alacritty --embed"),
         "A-Escape" => power_menu(),
 
@@ -109,6 +109,13 @@ pub const OUTER_PX: u32 = 5;
 pub const INNER_PX: u32 = 5;
 pub const BAR_HEIGHT_PX: u32 = 30;
 pub type KeyHandler = Box<dyn KeyEventHandler<RustConn>>;
+
+pub fn spawn_dmenu() -> KeyHandler {
+    key_handler(|state, _| {
+        let current_screen_idx = state.client_set.current_screen().index();
+        penrose::util::spawn(format!("dmenu_run -m {current_screen_idx}"))
+    })
+}
 
 pub fn power_menu() -> KeyHandler {
     key_handler(|state, _| {
