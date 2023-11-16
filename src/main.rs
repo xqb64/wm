@@ -129,7 +129,7 @@ pub fn power_menu() -> KeyHandler {
                 "logout" => penrose::util::spawn("pkill -fi wm"),
                 "shutdown" => penrose::util::spawn("sudo shutdown -h now"),
                 "reboot" => penrose::util::spawn("sudo reboot"),
-                "restart-wm" => std::process::exit(0), // Wrapper script then handles restarting us
+                "restart-wm" => std::process::exit(0),
                 _ => unimplemented!(),
             }
         } else {
