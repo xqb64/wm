@@ -2,28 +2,22 @@
 use penrose::{
     builtin::hooks::SpacingHook,
     core::{bindings::parse_keybindings_with_xmodmap, Config, WindowManager},
-    extensions::hooks::{
-        add_ewmh_hooks,
-        manage::{FloatingCentered, SetWorkspace},
-        SpawnOnStartup,
-    },
-    manage_hooks,
-    x::query::ClassName,
+    extensions::hooks::{add_ewmh_hooks, SpawnOnStartup},
     x11rb::RustConn,
     Result,
 };
-use std::{collections::HashMap, process::Stdio};
+use std::{
+    collections::HashMap,
+    process::{Command, Stdio},
+};
 use tracing_subscriber::{self, prelude::*};
 use wm::actions::{add_fixed_workspaces_state, add_xmobar_handle};
 use wm::bindings::raw_key_bindings;
 use wm::layouts::layouts;
-
-pub const OUTER_PX: u32 = 5;
-pub const INNER_PX: u32 = 5;
-pub const BAR_HEIGHT_PX: u32 = 30;
+use wm::{BAR_HEIGHT_PX, INNER_PX, OUTER_PX, PANEL_HEIGHT_PX};
 
 fn main() -> Result<()> {
-    let file_appender = tracing_appender::rolling::daily("/home/alex/wmlogs", "log.log");
+    let file_appender = tracing_appender::rolling::daily("/home/alex/wmlogs", "log_");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     let tracing_builder = tracing_subscriber::fmt()
@@ -34,22 +28,24 @@ fn main() -> Result<()> {
     let reload_handle = tracing_builder.reload_handle();
     tracing_builder.finish().init();
 
-    let conn = RustConn::new()?;
-    let key_bindings = parse_keybindings_with_xmodmap(raw_key_bindings(reload_handle))?;
-
-    let startup_hook = SpawnOnStartup::boxed("/usr/bin/.wmwrc");
-    let manage_hook = manage_hooks![
-        ClassName("floatTerm") => FloatingCentered::new(0.8, 0.6),
-        ClassName("discord")  => SetWorkspace("9"),
-    ];
     let layout_hook = SpacingHook {
         inner_px: INNER_PX,
         outer_px: OUTER_PX,
         top_px: BAR_HEIGHT_PX,
-        bottom_px: 0,
+        bottom_px: PANEL_HEIGHT_PX,
     };
 
-    use std::process::Command;
+    let startup_hook = SpawnOnStartup::boxed("/home/alex/bin/start_panel");
+
+    let config = add_ewmh_hooks(Config {
+        default_layouts: layouts(),
+        layout_hook: Some(Box::new(layout_hook)),
+        startup_hook: Some(startup_hook),
+        ..Config::default()
+    });
+
+    let conn = RustConn::new()?;
+    let key_bindings = parse_keybindings_with_xmodmap(raw_key_bindings(reload_handle))?;
 
     Command::new("xmobar")
         .args(["/home/alex/.config/xmobar/xmobarrc_0", "-x", "0"])
@@ -61,15 +57,6 @@ fn main() -> Result<()> {
         .spawn()?;
 
     let xmobar_handle = xmobar_right.stdin.take().unwrap();
-
-    let config = add_ewmh_hooks(Config {
-        default_layouts: layouts(),
-        floating_classes: vec!["mpv-float".to_owned()],
-        manage_hook: Some(manage_hook),
-        startup_hook: Some(startup_hook),
-        layout_hook: Some(Box::new(layout_hook)),
-        ..Config::default()
-    });
 
     let wm = add_xmobar_handle(
         add_fixed_workspaces_state(WindowManager::new(
