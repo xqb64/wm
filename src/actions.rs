@@ -21,8 +21,9 @@ pub fn add_fixed_workspaces_state<X>(mut wm: WindowManager<X>) -> WindowManager<
 where
     X: XConn + 'static,
 {
+    let screen_count = wm.state.client_set.screens().count();
     let mut map = HashMap::new();
-    for (k, v) in (1..=9).zip((0..=1).cycle()) {
+    for (k, v) in (1..=9).zip((0..screen_count).cycle()) {
         map.insert(k.to_string(), v);
     }
     wm.state.add_extension(FixedWorkspaces(map));
