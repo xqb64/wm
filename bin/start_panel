@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+xfce4-panel -d
+
+until pids=$(pidof xfce4-panel)
+do
+    sleep 1
+done
+
+id="$(wmctrl -l | grep "xfce4-panel" | awk '{print $1}')"
+xdotool set_window --overrideredirect 1 "$id"
+xdotool windowunmap "$id"
+xdotool windowmap "$id"
