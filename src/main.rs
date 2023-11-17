@@ -1,4 +1,3 @@
-//! My personal penrose config
 use penrose::{
     builtin::hooks::SpacingHook,
     core::{bindings::parse_keybindings_with_xmodmap, Config, WindowManager},
@@ -35,7 +34,7 @@ fn main() -> Result<()> {
         bottom_px: PANEL_HEIGHT_PX,
     };
 
-    let startup_hook = SpawnOnStartup::boxed("/home/alex/bin/start_panel");
+    let startup_hook = SpawnOnStartup::boxed("/home/alex/bin/wm_startup");
 
     let config = add_ewmh_hooks(Config {
         default_layouts: layouts(),
