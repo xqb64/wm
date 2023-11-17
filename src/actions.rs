@@ -143,14 +143,46 @@ fn display_workspaces<X: XConn>(state: &mut State<X>) -> String {
 
     let active_ws = state.client_set.current_workspace().tag();
 
-    let mut s = workspaces.join(" ");
+    let empty_workspaces = state
+        .client_set
+        .workspaces()
+        .filter(|ws| ws.is_empty())
+        .map(|ws| ws.tag())
+        .collect::<Vec<_>>();
 
-    s = s.replace(
-        active_ws,
-        &format!("<fc=#42cbf5>[</fc>{active_ws}<fc=#42cbf5>]</fc>"),
-    );
+    let occupied_workspaces = state
+        .client_set
+        .workspaces()
+        .filter(|ws| !ws.is_empty())
+        .map(|ws| ws.tag())
+        .collect::<Vec<_>>();
 
-    s.push('\n');
+    let mut s = vec![];
+
+    for ws in workspaces {
+        let color = if occupied_workspaces.contains(&ws) {
+            "white"
+        } else if empty_workspaces.contains(&ws) {
+            "gray"
+        } else {
+            unreachable!();
+        };
+
+        if ws == active_ws {
+            s.push(format_active_ws(ws, color))
+        } else {
+            s.push(format!(r#"<fc={color}>{ws}</fc>"#));
+        }
+    }
+
+    s.push(" ".to_string());
+    s.push("\n".to_string());
+
+    let s = s.join(" ");
 
     s
+}
+
+fn format_active_ws(ws: &str, color: &str) -> String {
+    format!("<fc=#42cbf5>[</fc><fc={color}>{ws}</fc><fc=#42cbf5>]</fc>")
 }
