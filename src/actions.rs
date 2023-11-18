@@ -142,6 +142,12 @@ fn display_workspaces<X: XConn>(state: &mut State<X>) -> String {
         .collect::<Vec<_>>();
 
     let active_ws = state.client_set.current_workspace().tag();
+    let inactive_but_visible_ws = state
+        .client_set
+        .screens()
+        .filter(|screen| screen.index() != state.client_set.current_screen().index())
+        .map(|screen| screen.workspace.tag())
+        .collect::<Vec<_>>();
 
     let empty_workspaces = state
         .client_set
@@ -170,6 +176,8 @@ fn display_workspaces<X: XConn>(state: &mut State<X>) -> String {
 
         if ws == active_ws {
             s.push(format_active_ws(ws, color))
+        } else if inactive_but_visible_ws.contains(&ws) {
+            s.push(format_inactive_but_visible_ws(ws, color))
         } else {
             s.push(format!(r#"<fc={color}>{ws}</fc>"#));
         }
@@ -185,4 +193,8 @@ fn display_workspaces<X: XConn>(state: &mut State<X>) -> String {
 
 fn format_active_ws(ws: &str, color: &str) -> String {
     format!("<fc=#42cbf5>[</fc><fc={color}>{ws}</fc><fc=#42cbf5>]</fc>")
+}
+
+fn format_inactive_but_visible_ws(ws: &str, color: &str) -> String {
+    format!("<fc=gray>(</fc><fc={color}>{ws}</fc><fc=gray>)</fc>")
 }

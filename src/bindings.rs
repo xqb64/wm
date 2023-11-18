@@ -40,6 +40,11 @@ where
         "A-S-Return" => spawn("tabbed alacritty --embed"),
         "A-Escape" => power_menu(),
 
+        // Spawners
+        "F2" => spawn("thunar"),
+        "F3" => spawn("firefox"),
+        "F5" => spawn("code"),
+
         // Debugging
         "M-A-t" => set_tracing_filter(handle),
         "M-A-d" => log_current_state(),
