@@ -1,3 +1,4 @@
+use crate::MOD_KEY;
 use std::collections::HashMap;
 
 use crate::{
@@ -21,41 +22,41 @@ where
     let mut raw_bindings = map! {
         map_keys: |k: &str| k.to_string();
 
-        "A-Return" => modify_with(|cs| cs.swap_down()),
-        "A-S-Return" => modify_with(|cs| cs.swap_up()),
-        "A-S-c" => modify_with(|cs| cs.kill_focused()),
-        "A-Tab" => modify_with(|cs| cs.focus_down()),
-        "A-S-Tab" => modify_with(|cs| cs.focus_up()),
-        "A-w" => modify_with(|cs| cs.focus_screen(0)),
-        "A-e" => modify_with(|cs| cs.focus_screen(1)),
-        "A-S-w" => modify_with(|cs| cs.move_focused_to_screen(0)),
-        "A-S-e" => modify_with(|cs| cs.move_focused_to_screen(1)),
-        "A-space" => modify_with(|cs| cs.next_layout()),
-        "A-S-space" => modify_with(|cs| cs.previous_layout()),
-        "A-comma" => send_layout_message(|| IncMain(1)),
-        "A-period" => send_layout_message(|| IncMain(-1)),
-        "A-h" => send_layout_message(|| ShrinkMain),
-        "A-l" => send_layout_message(|| ExpandMain),
-        "A-p" => spawn_dmenu(),
-        "A-S-Return" => spawn("tabbed alacritty --embed"),
-        "A-Escape" => power_menu(),
+        &format!("{MOD_KEY}-Return") => modify_with(|cs| cs.swap_down()),
+        &format!("{MOD_KEY}-S-Return") => modify_with(|cs| cs.swap_up()),
+        &format!("{MOD_KEY}-S-c") => modify_with(|cs| cs.kill_focused()),
+        &format!("{MOD_KEY}-Tab") => modify_with(|cs| cs.focus_down()),
+        &format!("{MOD_KEY}-S-Tab") => modify_with(|cs| cs.focus_up()),
+        &format!("{MOD_KEY}-w") => modify_with(|cs| cs.focus_screen(0)),
+        &format!("{MOD_KEY}-e") => modify_with(|cs| cs.focus_screen(1)),
+        &format!("{MOD_KEY}-S-w") => modify_with(|cs| cs.move_focused_to_screen(0)),
+        &format!("{MOD_KEY}-S-e") => modify_with(|cs| cs.move_focused_to_screen(1)),
+        &format!("{MOD_KEY}-space") => modify_with(|cs| cs.next_layout()),
+        &format!("{MOD_KEY}-S-space") => modify_with(|cs| cs.previous_layout()),
+        &format!("{MOD_KEY}-comma") => send_layout_message(|| IncMain(1)),
+        &format!("{MOD_KEY}-period") => send_layout_message(|| IncMain(-1)),
+        &format!("{MOD_KEY}-h") => send_layout_message(|| ShrinkMain),
+        &format!("{MOD_KEY}-l") => send_layout_message(|| ExpandMain),
+        &format!("{MOD_KEY}-S-Return") => spawn("tabbed alacritty --embed"),
 
         // Spawners
-        "A-F2" => spawn("thunar"),
-        "A-F3" => spawn("firefox"),
-        "A-F4" => spawn("code"),
+        &format!("{MOD_KEY}-F2") => spawn("thunar"),
+        &format!("{MOD_KEY}-F3") => spawn("firefox"),
+        &format!("{MOD_KEY}-F4") => spawn("code"),
+        &format!("{MOD_KEY}-p") => spawn_dmenu(),
+        &format!("{MOD_KEY}-Escape") => power_menu(),
 
         // Some more controls
-        "C-A-space" => spawn("playerctl play-pause"),
-        "C-A-Left" => spawn("playerctl previous"),
-        "C-A-Right" => spawn("playerctl next"),
+        &format!("{MOD_KEY}-C-space") => spawn("playerctl play-pause"),
+        &format!("{MOD_KEY}-C-Left")=> spawn("playerctl previous"),
+        &format!("{MOD_KEY}-C-Right") => spawn("playerctl next"),
         "C-KP_Add" => spawn("amixer -D pulse sset Master 5%+"),
         "C-KP_Subtract" => spawn("amixer -D pulse sset Master 5%-"),
 
 
         // Debugging
-        "M-A-t" => set_tracing_filter(handle),
-        "M-A-d" => log_current_state(),
+        &format!("{MOD_KEY}-M-t") => set_tracing_filter(handle),
+        &format!("{MOD_KEY}-M-d") => log_current_state(),
 
     };
 
