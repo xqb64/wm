@@ -23,7 +23,7 @@ where
 {
     let screen_count = wm.state.client_set.screens().count();
     let mut map = HashMap::new();
-    for (k, v) in (1..=9).zip((0..screen_count).cycle()) {
+    for (k, v) in (1..=12).zip((0..screen_count).cycle()) {
         map.insert(k.to_string(), v);
     }
     wm.state.add_extension(FixedWorkspaces(map));

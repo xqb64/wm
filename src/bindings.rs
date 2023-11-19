@@ -41,9 +41,17 @@ where
         "A-Escape" => power_menu(),
 
         // Spawners
-        "F2" => spawn("thunar"),
-        "F3" => spawn("firefox"),
-        "F5" => spawn("code"),
+        "A-F2" => spawn("thunar"),
+        "A-F3" => spawn("firefox"),
+        "A-F4" => spawn("code"),
+
+        // Some more controls
+        "A-S-space" => spawn("playerctl play-pause"),
+        "A-S-Left" => spawn("playerctl previous"),
+        "A-S-Right" => spawn("playerctl next"),
+        "M-KP_Add" => spawn("amixer -D pulse sset Master 5%+"),
+        "M-KP_Subtract" => spawn("amixer -D pulse sset Master 5%-"),
+
 
         // Debugging
         "M-A-t" => set_tracing_filter(handle),
@@ -61,5 +69,42 @@ where
         ]);
     }
 
+    for (tag, key) in &[("10", "0"), ("11", "minus"), ("12", "plus")] {
+        raw_bindings.extend([
+            (format!("A-{key}"), show_workspace(tag)),
+            (
+                format!("A-S-{key}"),
+                modify_with(move |client_set| client_set.move_focused_to_tag(tag)),
+            ),
+        ]);
+    }
+
     raw_bindings
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use penrose::core::bindings::parse_keybindings_with_xmodmap;
+    use tracing_subscriber::{self, prelude::*};
+
+    #[test]
+    fn bindings_parse_correctly_with_xmodmap() {
+        let file_appender = tracing_appender::rolling::daily("/home/alex/wmlogs", "log_");
+        let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+        let tracing_builder = tracing_subscriber::fmt()
+            .with_env_filter("info")
+            .with_writer(non_blocking)
+            .with_filter_reloading();
+
+        let reload_handle = tracing_builder.reload_handle();
+        tracing_builder.finish().init();
+
+        let res = parse_keybindings_with_xmodmap(raw_key_bindings(reload_handle));
+
+        if let Err(e) = res {
+            panic!("{e}");
+        }
+    }
 }

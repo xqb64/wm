@@ -40,6 +40,7 @@ fn main() -> Result<()> {
         default_layouts: layouts(),
         layout_hook: Some(Box::new(layout_hook)),
         startup_hook: Some(startup_hook),
+        tags: (1..=12).map(|n| n.to_string()).collect::<Vec<String>>(),
         ..Config::default()
     });
 
