@@ -32,10 +32,10 @@ where
         "A-S-e" => modify_with(|cs| cs.move_focused_to_screen(1)),
         "A-space" => modify_with(|cs| cs.next_layout()),
         "A-S-space" => modify_with(|cs| cs.previous_layout()),
-        "A-S-Up" => send_layout_message(|| IncMain(1)),
-        "A-S-Down" => send_layout_message(|| IncMain(-1)),
-        "A-S-Left" => send_layout_message(|| ShrinkMain),
-        "A-S-Right" => send_layout_message(|| ExpandMain),
+        "A-comma" => send_layout_message(|| IncMain(1)),
+        "A-period" => send_layout_message(|| IncMain(-1)),
+        "A-h" => send_layout_message(|| ShrinkMain),
+        "A-l" => send_layout_message(|| ExpandMain),
         "A-p" => spawn_dmenu(),
         "A-S-Return" => spawn("tabbed alacritty --embed"),
         "A-Escape" => power_menu(),
@@ -46,11 +46,11 @@ where
         "A-F4" => spawn("code"),
 
         // Some more controls
-        "A-S-space" => spawn("playerctl play-pause"),
-        "A-S-Left" => spawn("playerctl previous"),
-        "A-S-Right" => spawn("playerctl next"),
-        "M-KP_Add" => spawn("amixer -D pulse sset Master 5%+"),
-        "M-KP_Subtract" => spawn("amixer -D pulse sset Master 5%-"),
+        "C-A-space" => spawn("playerctl play-pause"),
+        "C-A-Left" => spawn("playerctl previous"),
+        "C-A-Right" => spawn("playerctl next"),
+        "C-KP_Add" => spawn("amixer -D pulse sset Master 5%+"),
+        "C-KP_Subtract" => spawn("amixer -D pulse sset Master 5%-"),
 
 
         // Debugging
