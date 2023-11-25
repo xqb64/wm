@@ -1,7 +1,11 @@
 use penrose::{
     builtin::hooks::SpacingHook,
     core::{bindings::parse_keybindings_with_xmodmap, Config, WindowManager},
-    extensions::hooks::{add_ewmh_hooks, SpawnOnStartup},
+    extensions::hooks::{
+        add_ewmh_hooks, add_named_scratchpads, manage::FloatingCentered, NamedScratchPad,
+        SpawnOnStartup,
+    },
+    x::query::ClassName,
     x11rb::RustConn,
     Result,
 };
@@ -44,8 +48,17 @@ fn main() -> Result<()> {
         ..Config::default()
     });
 
+    let (nsp, toggle_scratch) = NamedScratchPad::new(
+        "term",
+        "alacritty --class __text_scratchpad",
+        ClassName("__text_scratchpad"),
+        FloatingCentered::new(0.8, 0.8),
+        true,
+    );
+
     let conn = RustConn::new()?;
-    let key_bindings = parse_keybindings_with_xmodmap(raw_key_bindings(reload_handle))?;
+    let key_bindings =
+        parse_keybindings_with_xmodmap(raw_key_bindings(reload_handle, toggle_scratch))?;
 
     Command::new("xmobar")
         .args(["/home/alex/.config/xmobar/xmobarrc_0", "-x", "0"])
@@ -58,14 +71,17 @@ fn main() -> Result<()> {
 
     let xmobar_handle = xmobar_right.stdin.take().unwrap();
 
-    let wm = add_xmobar_handle(
-        add_fixed_workspaces_state(WindowManager::new(
-            config,
-            key_bindings,
-            HashMap::new(),
-            conn,
-        )?),
-        xmobar_handle,
+    let wm = add_named_scratchpads(
+        add_xmobar_handle(
+            add_fixed_workspaces_state(WindowManager::new(
+                config,
+                key_bindings,
+                HashMap::new(),
+                conn,
+            )?),
+            xmobar_handle,
+        ),
+        vec![nsp],
     );
 
     wm.run()

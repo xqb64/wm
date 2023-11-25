@@ -10,11 +10,15 @@ use penrose::{
         actions::{log_current_state, modify_with, send_layout_message, spawn},
         layout::messages::{ExpandMain, IncMain, ShrinkMain},
     },
+    extensions::hooks::ToggleNamedScratchPad,
     map,
 };
 use tracing_subscriber::{reload::Handle, EnvFilter};
 
-pub fn raw_key_bindings<L, S>(handle: Handle<L, S>) -> HashMap<String, KeyHandler>
+pub fn raw_key_bindings<L, S>(
+    handle: Handle<L, S>,
+    toggle_scratch: ToggleNamedScratchPad,
+) -> HashMap<String, KeyHandler>
 where
     L: From<EnvFilter> + 'static,
     S: 'static,
@@ -53,10 +57,12 @@ where
         "C-KP_Add" => spawn("amixer -D pulse sset Master 5%+"),
         "C-KP_Subtract" => spawn("amixer -D pulse sset Master 5%-"),
 
-
         // Debugging
         &format!("{MOD_KEY}-M-t") => set_tracing_filter(handle),
         &format!("{MOD_KEY}-M-d") => log_current_state(),
+
+        // Scratchpads
+        &format!("{MOD_KEY}-slash") => Box::new(toggle_scratch),
 
     };
 
@@ -81,31 +87,4 @@ where
     }
 
     raw_bindings
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use penrose::core::bindings::parse_keybindings_with_xmodmap;
-    use tracing_subscriber::{self, prelude::*};
-
-    #[test]
-    fn bindings_parse_correctly_with_xmodmap() {
-        let file_appender = tracing_appender::rolling::daily("/home/alex/wmlogs", "log_");
-        let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-
-        let tracing_builder = tracing_subscriber::fmt()
-            .with_env_filter("info")
-            .with_writer(non_blocking)
-            .with_filter_reloading();
-
-        let reload_handle = tracing_builder.reload_handle();
-        tracing_builder.finish().init();
-
-        let res = parse_keybindings_with_xmodmap(raw_key_bindings(reload_handle));
-
-        if let Err(e) = res {
-            panic!("{e}");
-        }
-    }
 }

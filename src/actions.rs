@@ -7,11 +7,12 @@ use penrose::{
     custom_error,
     extensions::util::dmenu::{DMenu, DMenuConfig, MenuMatch},
     pure::Workspace,
+    util::spawn_for_output_with_args,
     x::{XConn, XConnExt},
     x11rb::RustConn,
     Result, Xid,
 };
-use tracing::warn;
+use tracing::{info, warn};
 use tracing_subscriber::{reload::Handle, EnvFilter};
 
 struct FixedWorkspaces(HashMap<String, usize>);
@@ -127,14 +128,16 @@ fn refresh_hook<X: XConn>(state: &mut State<X>, x: &X) -> Result<()> {
     let _s = state.extension::<XmobarHandle>()?;
     _s.borrow_mut()
         .0
-        .write_all(display_workspaces(state).as_bytes())?;
+        .write_all(display_workspaces(state)?.as_bytes())?;
 
     x.refresh(state)?;
 
     Ok(())
 }
 
-fn display_workspaces<X: XConn>(state: &mut State<X>) -> String {
+fn display_workspaces<X: XConn>(state: &mut State<X>) -> Result<String> {
+    let scratchpad_names = vec!["term"];
+
     let workspaces = state
         .client_set
         .ordered_workspaces()
@@ -183,12 +186,16 @@ fn display_workspaces<X: XConn>(state: &mut State<X>) -> String {
         }
     }
 
+    for scratchpad_name in scratchpad_names {
+        s.push(format_named_scratchpad(state, &scratchpad_name)?);
+    }
+
     s.push(" ".to_string());
     s.push("\n".to_string());
 
     let s = s.join(" ");
 
-    s
+    Ok(s)
 }
 
 fn format_active_ws(ws: &str, color: &str) -> String {
@@ -197,4 +204,50 @@ fn format_active_ws(ws: &str, color: &str) -> String {
 
 fn format_inactive_but_visible_ws(ws: &str, color: &str) -> String {
     format!("<fc=gray>(</fc><fc={color}>{ws}</fc><fc=gray>)</fc>")
+}
+
+fn format_named_scratchpad<X: XConn>(state: &State<X>, scratchpad: &str) -> Result<String> {
+    if is_named_scratchpad_active(state) {
+        Ok(format!(
+            "<fc=#42cbf5>[</fc><fc=white>{scratchpad}</fc><fc=#42cbf5>]</fc>"
+        ))
+    } else {
+        Ok(format!("<fc=gray>({scratchpad})</fc>"))
+    }
+}
+
+fn is_named_scratchpad_active<X: XConn>(state: &State<X>) -> bool {
+    if let Some(xid) = get_xid_of_namedscratchpad("__text_scratchpad") {
+        if let Some(_client) = state
+            .client_set
+            .current_screen()
+            .workspace
+            .clients()
+            .find(|&&client| u32::from(client) == xid)
+        {
+            info!("returning true");
+            return true;
+        }
+    }
+    false
+}
+
+fn get_xid_of_namedscratchpad(class: &str) -> Option<u32> {
+    let output = spawn_for_output_with_args("xwininfo", &["-root", "-tree"]).unwrap();
+    let xid = output
+        .split('\n')
+        .find(|line| line.contains(&class))
+        .and_then(|line| {
+            u32::from_str_radix(
+                line.split_whitespace()
+                    .next()
+                    .unwrap()
+                    .strip_prefix("0x")
+                    .unwrap(),
+                16,
+            )
+            .ok()
+        });
+
+    xid
 }
