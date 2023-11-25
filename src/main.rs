@@ -14,7 +14,7 @@ use std::{
     process::{Command, Stdio},
 };
 use tracing_subscriber::{self, prelude::*};
-use wm::actions::{add_fixed_workspaces_state, add_xmobar_handle};
+use wm::actions::{add_fixed_workspaces_state, add_namedscratchpads_state, add_xmobar_handle};
 use wm::bindings::raw_key_bindings;
 use wm::layouts::layouts;
 use wm::{BAR_HEIGHT_PX, INNER_PX, OUTER_PX, PANEL_HEIGHT_PX};
@@ -71,17 +71,20 @@ fn main() -> Result<()> {
 
     let xmobar_handle = xmobar_right.stdin.take().unwrap();
 
-    let wm = add_named_scratchpads(
-        add_xmobar_handle(
-            add_fixed_workspaces_state(WindowManager::new(
-                config,
-                key_bindings,
-                HashMap::new(),
-                conn,
-            )?),
-            xmobar_handle,
+    let wm = add_namedscratchpads_state(
+        add_named_scratchpads(
+            add_xmobar_handle(
+                add_fixed_workspaces_state(WindowManager::new(
+                    config,
+                    key_bindings,
+                    HashMap::new(),
+                    conn,
+                )?),
+                xmobar_handle,
+            ),
+            vec![nsp],
         ),
-        vec![nsp],
+        vec!["term"],
     );
 
     wm.run()

@@ -1,4 +1,4 @@
-use crate::MOD_KEY;
+use crate::{actions::toggle_namedscratchpad, MOD_KEY};
 use std::collections::HashMap;
 
 use crate::{
@@ -62,7 +62,7 @@ where
         &format!("{MOD_KEY}-M-d") => log_current_state(),
 
         // Scratchpads
-        &format!("{MOD_KEY}-slash") => Box::new(toggle_scratch),
+        &format!("{MOD_KEY}-slash") => toggle_namedscratchpad("term".to_string(), toggle_scratch),
 
     };
 

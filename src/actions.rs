@@ -3,20 +3,23 @@ use std::{collections::HashMap, io::Write, process::ChildStdin};
 use crate::KeyHandler;
 use penrose::{
     builtin::actions::key_handler,
-    core::{State, WindowManager},
+    core::{bindings::KeyEventHandler, State, WindowManager},
     custom_error,
-    extensions::util::dmenu::{DMenu, DMenuConfig, MenuMatch},
+    extensions::{
+        hooks::ToggleNamedScratchPad,
+        util::dmenu::{DMenu, DMenuConfig, MenuMatch},
+    },
     pure::Workspace,
-    util::spawn_for_output_with_args,
     x::{XConn, XConnExt},
     x11rb::RustConn,
     Result, Xid,
 };
-use tracing::{info, warn};
+use tracing::warn;
 use tracing_subscriber::{reload::Handle, EnvFilter};
 
 struct FixedWorkspaces(HashMap<String, usize>);
 struct XmobarHandle(ChildStdin);
+struct NamedScratchpadsState(HashMap<String, bool>);
 
 pub fn add_fixed_workspaces_state<X>(mut wm: WindowManager<X>) -> WindowManager<X>
 where
@@ -38,6 +41,42 @@ where
     wm.state.add_extension(XmobarHandle(handle));
     wm.state.config.compose_or_set_refresh_hook(refresh_hook);
     wm
+}
+
+pub fn add_namedscratchpads_state<X>(
+    mut wm: WindowManager<X>,
+    sratchpads: Vec<&str>,
+) -> WindowManager<X>
+where
+    X: XConn + 'static,
+{
+    let mut map = HashMap::new();
+    for scratchpad in sratchpads {
+        map.insert(scratchpad.to_string(), false);
+    }
+    wm.state.add_extension(NamedScratchpadsState(map));
+
+    wm
+}
+
+pub fn toggle_namedscratchpad(
+    class: String,
+    mut toggle_scratch: ToggleNamedScratchPad,
+) -> KeyHandler {
+    key_handler(move |state, x: &RustConn| {
+        let _s = state.extension::<NamedScratchpadsState>()?;
+        let mut s = _s.borrow_mut();
+
+        if let Some(visible) = s.0.get_mut(class.as_str()) {
+            *visible = !*visible;
+
+            drop(s);
+
+            toggle_scratch.call(state, x)?;
+        }
+
+        Ok(())
+    })
 }
 
 pub fn show_workspace(ws: &str) -> KeyHandler {
@@ -207,7 +246,7 @@ fn format_inactive_but_visible_ws(ws: &str, color: &str) -> String {
 }
 
 fn format_named_scratchpad<X: XConn>(state: &State<X>, scratchpad: &str) -> Result<String> {
-    if is_named_scratchpad_active(state) {
+    if is_named_scratchpad_active(state, scratchpad)? {
         Ok(format!(
             "<fc=#42cbf5>[</fc><fc=white>{scratchpad}</fc><fc=#42cbf5>]</fc>"
         ))
@@ -216,38 +255,8 @@ fn format_named_scratchpad<X: XConn>(state: &State<X>, scratchpad: &str) -> Resu
     }
 }
 
-fn is_named_scratchpad_active<X: XConn>(state: &State<X>) -> bool {
-    if let Some(xid) = get_xid_of_namedscratchpad("__text_scratchpad") {
-        if let Some(_client) = state
-            .client_set
-            .current_screen()
-            .workspace
-            .clients()
-            .find(|&&client| u32::from(client) == xid)
-        {
-            info!("returning true");
-            return true;
-        }
-    }
-    false
-}
-
-fn get_xid_of_namedscratchpad(class: &str) -> Option<u32> {
-    let output = spawn_for_output_with_args("xwininfo", &["-root", "-tree"]).unwrap();
-    let xid = output
-        .split('\n')
-        .find(|line| line.contains(&class))
-        .and_then(|line| {
-            u32::from_str_radix(
-                line.split_whitespace()
-                    .next()
-                    .unwrap()
-                    .strip_prefix("0x")
-                    .unwrap(),
-                16,
-            )
-            .ok()
-        });
-
-    xid
+fn is_named_scratchpad_active<X: XConn>(state: &State<X>, class: &str) -> Result<bool> {
+    let s = state.extension::<NamedScratchpadsState>()?;
+    let s = s.borrow();
+    Ok(*s.0.get(class).unwrap_or(&false))
 }
