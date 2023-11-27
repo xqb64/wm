@@ -11,6 +11,5 @@ pub const RATIO_STEP: f32 = 0.1;
 pub const OUTER_PX: u32 = 5;
 pub const INNER_PX: u32 = 10;
 pub const BAR_HEIGHT_PX: u32 = 20;
-pub const PANEL_HEIGHT_PX: u32 = 24;
 
-const MOD_KEY: &'static str = "A";
+const MOD_KEY: &str = "A";

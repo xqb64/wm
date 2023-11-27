@@ -226,7 +226,7 @@ fn display_workspaces<X: XConn>(state: &mut State<X>) -> Result<String> {
     }
 
     for scratchpad_name in scratchpad_names {
-        s.push(format_named_scratchpad(state, &scratchpad_name)?);
+        s.push(format_named_scratchpad(state, scratchpad_name)?);
     }
 
     s.push(" ".to_string());

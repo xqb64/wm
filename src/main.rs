@@ -17,7 +17,7 @@ use tracing_subscriber::{self, prelude::*};
 use wm::actions::{add_fixed_workspaces_state, add_namedscratchpads_state, add_xmobar_handle};
 use wm::bindings::raw_key_bindings;
 use wm::layouts::layouts;
-use wm::{BAR_HEIGHT_PX, INNER_PX, OUTER_PX, PANEL_HEIGHT_PX};
+use wm::{BAR_HEIGHT_PX, INNER_PX, OUTER_PX};
 
 fn main() -> Result<()> {
     let file_appender = tracing_appender::rolling::daily("/home/alex/wmlogs", "log_");
@@ -35,7 +35,7 @@ fn main() -> Result<()> {
         inner_px: INNER_PX,
         outer_px: OUTER_PX,
         top_px: BAR_HEIGHT_PX,
-        bottom_px: PANEL_HEIGHT_PX,
+        bottom_px: 0,
     };
 
     let startup_hook = SpawnOnStartup::boxed("/home/alex/bin/wm_startup");
