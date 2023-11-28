@@ -217,11 +217,11 @@ fn display_workspaces<X: XConn>(state: &mut State<X>) -> Result<String> {
         };
 
         if ws == active_ws {
-            s.push(format_active_ws(ws, color))
+            s.push(format_active_ws(&format_action(ws), color));
         } else if inactive_but_visible_ws.contains(&ws) {
-            s.push(format_inactive_but_visible_ws(ws, color))
+            s.push(format_inactive_but_visible_ws(&format_action(ws), color));
         } else {
-            s.push(format!(r#"<fc={color}>{ws}</fc>"#));
+            s.push(format_inactive_ws(&format_action(ws), color));
         }
     }
 
@@ -237,8 +237,16 @@ fn display_workspaces<X: XConn>(state: &mut State<X>) -> Result<String> {
     Ok(s)
 }
 
+fn format_action(ws: &str) -> String {
+    format!("<action=`xdotool set_desktop {ws}`>{ws}</action>")
+}
+
 fn format_active_ws(ws: &str, color: &str) -> String {
     format!("<fc=#42cbf5>[</fc><fc={color}>{ws}</fc><fc=#42cbf5>]</fc>")
+}
+
+fn format_inactive_ws(ws: &str, color: &str) -> String {
+    format!(r#"<fc={color}>{ws}</fc>"#)
 }
 
 fn format_inactive_but_visible_ws(ws: &str, color: &str) -> String {
