@@ -7,5 +7,3 @@ pkill -fi dunst; dunst &
 pkill -fi xfce4-screensaver; xfce4-screensaver &
 
 "$HOME/.fehbg"
-
-"$HOME/bin/start_panel"
