@@ -238,7 +238,8 @@ fn display_workspaces<X: XConn>(state: &mut State<X>) -> Result<String> {
 }
 
 fn format_action(ws: &str) -> String {
-    format!("<action=`xdotool set_desktop {ws}`>{ws}</action>")
+    let idx = ws.parse::<usize>().unwrap().saturating_sub(1);
+    format!("<action=`xdotool set_desktop {idx}`>{ws}</action>")
 }
 
 fn format_active_ws(ws: &str, color: &str) -> String {
