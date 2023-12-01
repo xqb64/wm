@@ -18,6 +18,7 @@ use tracing_subscriber::{reload::Handle, EnvFilter};
 pub fn raw_key_bindings<L, S>(
     handle: Handle<L, S>,
     toggle_scratch: ToggleNamedScratchPad,
+    toggle_scratch2: ToggleNamedScratchPad,
 ) -> HashMap<String, KeyHandler>
 where
     L: From<EnvFilter> + 'static,
@@ -63,6 +64,7 @@ where
 
         // Scratchpads
         &format!("{MOD_KEY}-slash") => toggle_namedscratchpad("term".to_string(), toggle_scratch),
+        &format!("{MOD_KEY}-backslash") => toggle_namedscratchpad("vpn".to_string(), toggle_scratch2),
 
     };
 

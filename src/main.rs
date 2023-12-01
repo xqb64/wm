@@ -44,6 +44,7 @@ fn main() -> Result<()> {
         default_layouts: layouts(),
         layout_hook: Some(Box::new(layout_hook)),
         startup_hook: Some(startup_hook),
+        floating_classes: vec!["pia-client".to_owned()],
         tags: (1..=12).map(|n| n.to_string()).collect::<Vec<String>>(),
         ..Config::default()
     });
@@ -56,9 +57,20 @@ fn main() -> Result<()> {
         true,
     );
 
+    let (nsp2, toggle_scratch2) = NamedScratchPad::new(
+        "vpn",
+        "protonvpn-app",
+        ClassName("Protonvpn-app"),
+        FloatingCentered::new(0.8, 0.8),
+        true,
+    );
+
     let conn = RustConn::new()?;
-    let key_bindings =
-        parse_keybindings_with_xmodmap(raw_key_bindings(reload_handle, toggle_scratch))?;
+    let key_bindings = parse_keybindings_with_xmodmap(raw_key_bindings(
+        reload_handle,
+        toggle_scratch,
+        toggle_scratch2,
+    ))?;
 
     Command::new("xmobar")
         .args(["/home/alex/.config/xmobar/xmobarrc_0", "-x", "0"])
@@ -82,9 +94,9 @@ fn main() -> Result<()> {
                 )?),
                 xmobar_handle,
             ),
-            vec![nsp],
+            vec![nsp, nsp2],
         ),
-        vec!["term"],
+        vec!["term", "vpn"],
     );
 
     wm.run()

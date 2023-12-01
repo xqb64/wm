@@ -175,7 +175,7 @@ fn refresh_hook<X: XConn>(state: &mut State<X>, x: &X) -> Result<()> {
 }
 
 fn display_workspaces<X: XConn>(state: &mut State<X>) -> Result<String> {
-    let scratchpad_names = vec!["term"];
+    let scratchpad_names = vec!["term", "vpn"];
 
     let workspaces = state
         .client_set
