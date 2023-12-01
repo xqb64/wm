@@ -11,7 +11,7 @@ use penrose::{
 };
 use std::{
     collections::HashMap,
-    process::{Command, Stdio},
+    process::{ChildStdin, Command, Stdio},
 };
 use tracing_subscriber::{self, prelude::*};
 use wm::actions::{add_fixed_workspaces_state, add_namedscratchpads_state, add_xmobar_handle};
@@ -72,16 +72,7 @@ fn main() -> Result<()> {
         toggle_scratch2,
     ))?;
 
-    Command::new("xmobar")
-        .args(["/home/alex/.config/xmobar/xmobarrc_0", "-x", "0"])
-        .spawn()?;
-
-    let mut xmobar_right = Command::new("xmobar")
-        .args(["/home/alex/.config/xmobar/xmobarrc_1", "-x", "1"])
-        .stdin(Stdio::piped())
-        .spawn()?;
-
-    let xmobar_handle = xmobar_right.stdin.take().unwrap();
+    let xmobar_handle = get_xmobar_handle()?;
 
     let wm = add_namedscratchpads_state(
         add_named_scratchpads(
@@ -100,4 +91,28 @@ fn main() -> Result<()> {
     );
 
     wm.run()
+}
+
+#[cfg(not(feature = "laptop"))]
+fn get_xmobar_handle() -> Result<ChildStdin> {
+    Command::new("xmobar")
+        .args(["/home/alex/.config/xmobar/xmobarrc_0", "-x", "0"])
+        .spawn()?;
+
+    let mut xmobar_right = Command::new("xmobar")
+        .args(["/home/alex/.config/xmobar/xmobarrc_1", "-x", "1"])
+        .stdin(Stdio::piped())
+        .spawn()?;
+
+    Ok(xmobar_right.stdin.take().unwrap())
+}
+
+#[cfg(feature = "laptop")]
+fn get_xmobar_handle() -> Result<ChildStdin> {
+    let mut xmobar = Command::new("xmobar")
+        .arg("/home/alex/.config/xmobar/xmobarrc")
+        .stdin(Stdio::piped())
+        .spawn()?;
+
+    Ok(xmobar.stdin.take().unwrap())
 }
