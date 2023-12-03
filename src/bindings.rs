@@ -55,8 +55,10 @@ where
         &format!("{MOD_KEY}-C-space") => spawn("playerctl play-pause"),
         &format!("{MOD_KEY}-C-Left")=> spawn("playerctl previous"),
         &format!("{MOD_KEY}-C-Right") => spawn("playerctl next"),
+        &format!("{MOD_KEY}-grave") => spawn("toggle_keyboard_layout.py"),
         "C-KP_Add" => spawn("amixer -D pulse sset Master 5%+"),
         "C-KP_Subtract" => spawn("amixer -D pulse sset Master 5%-"),
+        &format!("{MOD_KEY}-Sys_Req") => spawn("xfce4-screenshooter"),
 
         // Debugging
         &format!("{MOD_KEY}-M-t") => set_tracing_filter(handle),
